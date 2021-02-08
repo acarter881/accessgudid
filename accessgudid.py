@@ -50,7 +50,7 @@ for i in range(len(lines)):
 df = pd.DataFrame(records, columns=['Company Name', 'Device ID', 'Prescription Use', 'Single Use', 'Definition'])
 
 # Write relevant data to an Excel file
-df.to_excel(excel_writer='testing.xlsx', sheet_name = 'Medical Devices', index=False, freeze_panes=(1,0))
+df.to_excel(excel_writer='testing.xlsx', sheet_name='Medical Devices', index=False, freeze_panes=(1,0))
 
 # Close the text file
 med_devices.close()
