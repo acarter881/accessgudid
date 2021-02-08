@@ -17,8 +17,11 @@ for i in range(len(lines)):
     # Base URL for the medical device lookup in JSON format
     URL = 'https://accessgudid.nlm.nih.gov/api/v2/devices/lookup.json?di='
 
+    # Variable for the medical device identifier
+    deviceNum = lines[devicePos].strip()
+
     # Append the device identifier to the base URL to form the completed URL
-    URL += lines[devicePos].strip()
+    URL += deviceNum
 
     # Increment devicePos, so the script goes to the next medical device identifier on its next iteration
     devicePos += 1
@@ -26,6 +29,9 @@ for i in range(len(lines)):
     # Create the response object and check if the request is successful
     res = requests.get(URL)
     res.raise_for_status()
+
+    # Print information about the search to the terminal
+    print(f'Searching for device number: {deviceNum}...')
 
     # Deserialize the response object's text property (a string) to a variable named deviceData
     deviceData = json.loads(res.text)
@@ -44,7 +50,7 @@ for i in range(len(lines)):
 df = pd.DataFrame(records, columns=['Company Name', 'Device ID', 'Prescription Use', 'Single Use', 'Definition'])
 
 # Write relevant data to an Excel file
-df.to_excel('testing.xlsx', index=False)
+df.to_excel('testing.xlsx', sheet_name = 'Medical Devices', index=False, freeze_panes=(1,0))
 
 # Close the text file
 med_devices.close()
