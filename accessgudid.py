@@ -1,57 +1,57 @@
-#! python3
-import json
 import requests
+import json
+import concurrent.futures
 import pandas as pd
+import time
 
-# Reads each line of a text file as a medical device identifier
-med_devices = open('list.txt', 'r')
-lines = med_devices.readlines()
+class myMedicalDevices:
+    def __init__(self, textPath) -> None:
+        self.textPath = textPath
+        self.records = []
+        self.startTime = time.perf_counter()
 
-# Start reading from the first line of the text file
-devicePos = 0
+    def getGTINs(self):
+        with open(file=self.textPath, mode='r') as f:
+            self.lines = [identifier.strip() for identifier in f.readlines()]
 
-# Create an empty list that stores all of the medical device data 
-records = []
+    def main(self, GTIN):
+        # Create the full API URL
+        self.URL = 'https://accessgudid.nlm.nih.gov/api/v2/devices/lookup.json?di=' + GTIN
+        
+        # Create the response object and check if the request is successful
+        self.res = requests.get(self.URL)
+        self.res.raise_for_status()
+        
+        # Deserialize the response object's text property (a string) to a variable named deviceData
+        self.deviceData = json.loads(self.res.text)
 
-for i in range(len(lines)):
-    # The current catalog number being searched
-    deviceNum = lines[devicePos].strip()
+        # Relevant data to gather
+        self.companyName = self.deviceData['gudid']['device']['companyName']
+        self.singleUse = self.deviceData['gudid']['device']['singleUse']
+        self.rxUse = self.deviceData['gudid']['device']['rx']
+        self.gmdnPTDefinition = self.deviceData['gudid']['device']['gmdnTerms']['gmdn'][0]['gmdnPTDefinition']
 
-    # Base URL for the medical device lookup in JSON format
-    URL = 'https://accessgudid.nlm.nih.gov/api/v2/devices/lookup.json?di='
+        # Append relevant data to list
+        return self.records.append((self.companyName, GTIN, self.singleUse, self.rxUse, self.gmdnPTDefinition))
 
-    # Append the device identifier to the base URL to form the completed URL
-    URL += deviceNum
+    def myThreads(self):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor.map(self.main, self.lines)
 
-    # Increment devicePos, so the script goes to the next medical device identifier on its next iteration
-    devicePos += 1
+    def toPandas(self):
+        # Create pandas data frame    
+        self.df = pd.DataFrame(data=self.records, columns=['Company Name', 'Device ID', 'Single Use', 'Prescription Use', 'Definition'])
 
-    # Print information about the search to the terminal
-    print(f'Searching for GTIN: {deviceNum}...')
+        # Write relevant data to an Excel file
+        self.df.to_excel(excel_writer=r'C:\Users\Alex\Desktop\hello\Python\testing.xlsx', sheet_name='Medical Devices', index=False, freeze_panes=(1,0))
     
-    # Create the response object and check if the request is successful
-    res = requests.get(URL)
-    res.raise_for_status()
+    def endTime(self):
+        self.endTime = time.perf_counter()
+        print(f'It took {round(self.endTime - self.startTime, 2)} seconds to go through {len(self.lines)} items.')
 
-    # Deserialize the response object's text property (a string) to a variable named deviceData
-    deviceData = json.loads(res.text)
-
-    # Relevant data to gather
-    companyName = deviceData['gudid']['device']['companyName']
-    #deviceID = deviceData['gudid']['device']['identifiers']['identifier'][0]['deviceId'] # This usually gets the correct GTIN, but sometimes there are multiple IDs and it will pick the first (which seems to be the Package ID, which is NOT the GTIN we want)
-    singleUse = deviceData['gudid']['device']['singleUse']
-    rxUse = deviceData['gudid']['device']['rx']
-    gmdnPTName = deviceData['gudid']['device']['gmdnTerms']['gmdn'][0]['gmdnPTName']
-    gmdnPTDefinition = deviceData['gudid']['device']['gmdnTerms']['gmdn'][0]['gmdnPTDefinition']
-
-    # Append relevant data to list
-    records.append((companyName, deviceNum, singleUse, rxUse, gmdnPTName, gmdnPTDefinition))
-
-# Create pandas data frame    
-df = pd.DataFrame(records, columns=['Company Name', 'Device ID', 'Single Use', 'Prescription Use', 'Name', 'Definition'])
-
-# Write relevant data to an Excel file
-df.to_excel('deviceIdentifiers.xlsx', sheet_name='Device Identifiers', index=False, freeze_panes=(1,0))
-
-# Close the text file
-med_devices.close()
+# Instantiate the class and run the necessary functions
+c = myMedicalDevices(textPath=r'C:\Users\Alex\Desktop\hello\Python\list.txt')
+c.getGTINs()
+c.myThreads()
+c.toPandas()
+c.endTime()
